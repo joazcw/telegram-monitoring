@@ -1,6 +1,6 @@
-# Fraud Monitoring Telegram Bot
+# Fraud Monitoring System
 
-Real-time fraud monitoring system that ingests Telegram group messages, performs OCR on images for brand mentions, and sends instant alerts. Built for rapid deployment with minimal infrastructure.
+Real-time fraud monitoring system that ingests Telegram group messages using user authentication, performs OCR on images for brand mentions, and sends instant alerts. Built for rapid deployment with minimal infrastructure.
 
 ## Quick Start (3-5 minutes)
 
@@ -13,13 +13,13 @@ Real-time fraud monitoring system that ingests Telegram group messages, performs
 
 1. Visit https://my.telegram.org/apps
 2. Create new application, note `API ID` and `API Hash`
-3. Create a bot via @BotFather, get bot token for alerts
+3. Generate session encryption key (see below)
 
 ### 2. Setup Environment
 
 ```bash
 git clone <your-repo>
-cd fraud-monitor
+cd t
 cp .env.example .env
 # Edit .env with your credentials (see below)
 ```
@@ -27,12 +27,14 @@ cp .env.example .env
 ### 3. Configure Groups and Alerts
 
 ```bash
-# Find group IDs using Telegram desktop:
-# 1. Add bot to groups you want to monitor
-# 2. Forward message from group to @userinfobot
-# 3. Use the chat_id in TELEGRAM_GROUPS
+# Find accessible groups:
+python debug_messages.py  # Shows groups you can access
 
-# For alert chat: create group with your bot, get ID same way
+# Use group usernames (preferred) or numeric IDs:
+# - Username: @groupname
+# - Numeric ID: -1001234567890
+
+# For alert chat: use any chat/group where you want to receive alerts
 ```
 
 ### 4. Launch System
@@ -44,9 +46,19 @@ docker-compose logs -f app  # Watch for "Connected to Telegram" message
 
 ### 5. Quick Smoke Test
 
-1. Send image containing "CloudWalk" text to monitored group
-2. Check alert chat for notification within 30 seconds
-3. Verify in logs: `Brand hit detected: CloudWalk`
+1. **Text Test**: Send message with "CloudWalk" to monitored group
+   - Should receive alert within 5-10 seconds
+
+2. **Image Test**: Send clear image with "Visa" or "Mastercard" text
+   - Use high-contrast, readable text (black on white background works best)
+   - Should receive alert within 30 seconds
+
+3. **Verify in logs**:
+   ```bash
+   docker-compose logs -f app
+   # Look for: "Brand hit in text: CloudWalk (confidence: 100%)"
+   # Or: "Alert sent for brand: Visa"
+   ```
 
 ## Environment Configuration
 
@@ -63,7 +75,10 @@ TELEGRAM_GROUPS=@suspicious_group,@another_group
 # EDIT ME: Chat ID where alerts are sent
 TELEGRAM_ALERT_CHAT_ID=-123456789
 
-DB_URL=postgresql+psycopg2://fraud_user:fraud_pass@db:5432/fraud_db
+# EDIT ME: Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+SESSION_ENCRYPTION_KEY=your_encryption_key_here
+
+DB_URL=postgresql+psycopg://fraud_user:fraud_pass@db:5432/fraud_db
 MEDIA_DIR=./data/media
 OCR_LANG=eng
 # EDIT ME: Brands/keywords to detect (comma-separated)
@@ -74,32 +89,35 @@ LOG_LEVEL=INFO
 
 ## First Run Authentication
 
-On first startup, you'll need to authenticate with Telegram:
+Authenticate with your Telegram account before first run:
 
 ```bash
-docker-compose logs app
-# Look for: "Please enter your phone (or bot token):"
-docker-compose exec app python -c "
-import asyncio
-from src.auth import authenticate_session
-asyncio.run(authenticate_session())
-"
+# Generate encryption key
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+# Add the key to .env as SESSION_ENCRYPTION_KEY
+
+# Authenticate your account
+python scripts/auth.py
 # Enter phone number and verification code when prompted
+
+# Then start the system
+docker-compose up -d
 ```
 
 ## Troubleshooting
 
-- **"Session file not found"**: Normal on first run, follow authentication steps above
-- **"No brand hits detected"**: Check OCR_LANG matches image text language
-- **"Rate limit exceeded"**: Telegram API limits, wait 60 seconds
-- **"Database connection failed"**: Ensure `docker-compose up db` started successfully
+- **"Session file not found"**: Run `python scripts/auth.py` to authenticate
+- **"No brand hits detected"**: Check image has clear, readable text with target keywords
+- **"Database is locked"**: Fixed in latest version - uses shared session
+- **"Cannot find entity"**: Use group usernames (@group) instead of numeric IDs
+- **"Database connection failed"**: Ensure PostgreSQL container is healthy
 
 ## Architecture
 
 ```
-Telegram Groups → Telethon Client → OCR Engine → Brand Matcher → Alert Bot
-                        ↓                ↓            ↓
-                   PostgreSQL    Local Disk    Fuzzy Matching
+Telegram Groups → User Session → Message Collector → OCR Engine → Brand Matcher → Alert Sender
+                       ↓               ↓              ↓            ↓             ↓
+                  Authentication   PostgreSQL    Local Disk   Fuzzy Search   User Session
 ```
 
 For detailed implementation, see `docs/Implementation-Guide.md`.
