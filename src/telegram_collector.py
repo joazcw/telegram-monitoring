@@ -55,17 +55,51 @@ class TelegramCollector:
             me = await self.client.get_me()
             logger.info(f"Connected to Telegram as: {me.first_name} (@{me.username or 'no_username'})")
 
-            # Register message handler
-            @self.client.on(events.NewMessage(chats=self.groups))
+            # Validate and resolve group access
+            valid_groups = await self._validate_groups()
+            if not valid_groups:
+                logger.error("No accessible groups found. Check your TELEGRAM_GROUPS configuration.")
+                raise Exception("No accessible groups configured")
+
+            # Register message handler with validated groups
+            @self.client.on(events.NewMessage(chats=valid_groups))
             async def message_handler(event):
                 await self._process_message(event)
 
-            logger.info(f"Listening for messages in {len(self.groups)} groups...")
+            logger.info(f"Listening for messages in {len(valid_groups)} groups...")
             await self.client.run_until_disconnected()
 
         except Exception as e:
             logger.error(f"Failed to start Telegram client: {e}")
             raise
+
+    async def _validate_groups(self):
+        """Validate and return list of accessible groups"""
+        valid_groups = []
+
+        for group in self.groups:
+            try:
+                # Try to resolve the group/chat
+                entity = await self.client.get_input_entity(group)
+                valid_groups.append(group)
+                logger.info(f"✅ Group accessible: {group}")
+
+            except Exception as e:
+                logger.warning(f"❌ Cannot access group '{group}': {e}")
+                logger.warning(f"   Skipping {group}. Make sure:")
+                logger.warning(f"   - Group exists and username is correct")
+                logger.warning(f"   - You are a member of the group")
+                logger.warning(f"   - For private groups, use numeric ID instead of username")
+
+        if not valid_groups:
+            logger.error("No groups are accessible. Common issues:")
+            logger.error("1. Group usernames don't exist (check for typos)")
+            logger.error("2. You're not a member of the groups")
+            logger.error("3. Groups are private (need numeric IDs instead)")
+            logger.error("4. Using example values from README.md")
+            logger.error("Run 'python debug_messages.py' to see accessible groups")
+
+        return valid_groups
 
     async def _process_message(self, event):
         """Process incoming message and store in database"""

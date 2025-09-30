@@ -8,7 +8,22 @@ load_dotenv()
 TELEGRAM_API_ID = int(os.getenv('TELEGRAM_API_ID', '0'))
 TELEGRAM_API_HASH = os.getenv('TELEGRAM_API_HASH', '')
 TELEGRAM_SESSION_PATH = os.getenv('TELEGRAM_SESSION_PATH', './data/telethon.session')
-TELEGRAM_GROUPS = [g.strip() for g in os.getenv('TELEGRAM_GROUPS', '').split(',') if g.strip()]
+def _parse_groups(groups_str: str) -> List:
+    """Parse groups string, converting numeric IDs to integers and keeping usernames as strings"""
+    groups = []
+    for g in groups_str.split(','):
+        g = g.strip()
+        if not g:
+            continue
+        # If it's a numeric ID (starts with - and rest are digits), convert to int
+        if g.startswith('-') and g[1:].isdigit():
+            groups.append(int(g))
+        # If it starts with @ or contains letters, keep as string (username)
+        else:
+            groups.append(g)
+    return groups
+
+TELEGRAM_GROUPS = _parse_groups(os.getenv('TELEGRAM_GROUPS', ''))
 TELEGRAM_ALERT_CHAT_ID = int(os.getenv('TELEGRAM_ALERT_CHAT_ID', '0'))
 
 # Database Configuration

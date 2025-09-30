@@ -21,20 +21,32 @@ Real-time fraud monitoring system that ingests Telegram group messages using use
 git clone <your-repo>
 cd t
 cp .env.example .env
-# Edit .env with your credentials (see below)
+# Edit .env with your API credentials first (see below)
+# Don't worry about group IDs yet - we'll discover them in Step 3
 ```
 
-### 3. Configure Groups and Alerts
+### 3. Authenticate and Configure Groups
+
+**⚠️ Critical**: You MUST authenticate first and use real groups you can access!
 
 ```bash
-# Find accessible groups:
-python debug_messages.py  # Shows groups you can access
+# Step 1: Authenticate with Telegram
+python scripts/auth.py
+# Enter your phone number and verification code when prompted
 
-# Use group usernames (preferred) or numeric IDs:
-# - Username: @groupname
-# - Numeric ID: -1001234567890
+# Step 2: Discover your accessible groups
+python debug_messages.py
+# This will show a formatted table with:
+# - Group IDs (copy these to .env)
+# - Group names and types
+# - Example .env configuration
 
-# For alert chat: use any chat/group where you want to receive alerts
+# Step 3: Update .env with the IDs from above
+# Choose groups you want to MONITOR for suspicious content:
+TELEGRAM_GROUPS=-1001234567890,-1002345678901
+
+# Choose where you want to RECEIVE alerts (can be same or different):
+TELEGRAM_ALERT_CHAT_ID=-1003456789012
 ```
 
 ### 4. Launch System
@@ -60,6 +72,24 @@ docker-compose logs -f app  # Watch for "Connected to Telegram" message
    # Or: "Alert sent for brand: Visa"
    ```
 
+## Understanding Groups vs Alerts
+
+**Key Concept**: You need to understand the difference between monitoring and alerting:
+
+- **`TELEGRAM_GROUPS`**: Groups you want to **watch for suspicious messages** (input)
+- **`TELEGRAM_ALERT_CHAT_ID`**: Where you want to **receive notifications** (output)
+
+**Examples:**
+```
+✅ Good Setup (Different IDs):
+TELEGRAM_GROUPS=-1001234567890        # Monitor public crypto group
+TELEGRAM_ALERT_CHAT_ID=-1003456789012 # Send alerts to private team chat
+
+❌ Problematic Setup (Same ID):
+TELEGRAM_GROUPS=-1001234567890        # Monitor group
+TELEGRAM_ALERT_CHAT_ID=-1001234567890 # Alert same group (may cause issues)
+```
+
 ## Environment Configuration
 
 Copy to `.env` and edit marked fields:
@@ -70,10 +100,15 @@ TELEGRAM_API_ID=12345
 TELEGRAM_API_HASH=your_api_hash_here
 
 TELEGRAM_SESSION_PATH=./data/telethon.session
-# EDIT ME: Group usernames or IDs (comma-separated)
-TELEGRAM_GROUPS=@suspicious_group,@another_group
-# EDIT ME: Chat ID where alerts are sent
-TELEGRAM_ALERT_CHAT_ID=-123456789
+
+# EDIT ME: Group/channel IDs to monitor (get from Step 3 above)
+# Use NUMERIC IDs (recommended) or usernames - comma-separated for multiple
+TELEGRAM_GROUPS=-1001234567890
+# Alternative username format: TELEGRAM_GROUPS=@your_group_name
+
+# EDIT ME: Chat ID where alerts are sent (get from Step 3 above)
+# IMPORTANT: Use different ID from monitoring groups for best results
+TELEGRAM_ALERT_CHAT_ID=-1003456789012
 
 # EDIT ME: Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
 SESSION_ENCRYPTION_KEY=your_encryption_key_here
@@ -87,26 +122,29 @@ FUZZY_THRESHOLD=85
 LOG_LEVEL=INFO
 ```
 
-## First Run Authentication
+## Complete Setup Walkthrough
 
-Authenticate with your Telegram account before first run:
+**If you followed the steps above, skip this section.** This is for reference:
 
 ```bash
-# Generate encryption key
+# 1. Generate encryption key and add to .env
 python -c "import secrets; print(secrets.token_urlsafe(32))"
-# Add the key to .env as SESSION_ENCRYPTION_KEY
 
-# Authenticate your account
+# 2. Authenticate with Telegram
 python scripts/auth.py
-# Enter phone number and verification code when prompted
 
-# Then start the system
+# 3. Find your groups (use the script from Step 2 in the main setup)
+# Copy the IDs and update your .env file
+
+# 4. Update .env with real IDs, then start
 docker-compose up -d
 ```
 
 ## Troubleshooting
 
 - **"Session file not found"**: Run `python scripts/auth.py` to authenticate
+- **"UsernameInvalidError" or "Invalid Peer"**: You're using example/invalid group IDs. Run `python debug_messages.py` to get real group IDs you can access
+- **"No accessible groups"**: Run `python debug_messages.py` to discover groups you can monitor
 - **"No brand hits detected"**: Check image has clear, readable text with target keywords
 - **"Database is locked"**: Fixed in latest version - uses shared session
 - **"Cannot find entity"**: Use group usernames (@group) instead of numeric IDs
