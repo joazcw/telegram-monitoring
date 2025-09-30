@@ -158,22 +158,45 @@ class TelegramCollector:
             sha256_hash = await self._calculate_file_hash(file_path)
             file_size = os.path.getsize(file_path)
 
-            # Create image record
-            image_record = ImageRecord(
-                message_id=db_message_id,
-                file_path=file_path,
-                sha256_hash=sha256_hash,
-                file_size=file_size,
-                processed=False
-            )
-            db.add(image_record)
-            logger.info(f"Downloaded media: {file_path} ({file_size} bytes)")
+            # Check if this hash already exists (duplicate image)
+            existing_image = db.query(ImageRecord).filter(
+                ImageRecord.sha256_hash == sha256_hash
+            ).first()
 
-        except IntegrityError:
-            logger.debug(f"Media file with hash already exists, removing duplicate")
-            if file_path and os.path.exists(file_path):
-                os.remove(file_path)
-            db.rollback()
+            if existing_image:
+                # Duplicate detected! Reuse the existing file
+                logger.info(f"Duplicate image detected (hash: {sha256_hash[:16]}...)")
+                logger.info(f"Removing duplicate file: {file_path}")
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                
+                # Create a new image record pointing to the existing file
+                # Hash the combination to keep it at 64 characters
+                unique_string = f"{sha256_hash}_{db_message_id}"
+                new_hash = hashlib.sha256(unique_string.encode()).hexdigest()
+                logger.info(f"Creating new image record for message {db_message_id}, reusing file: {existing_image.file_path}")
+                
+                image_record = ImageRecord(
+                    message_id=db_message_id,
+                    file_path=existing_image.file_path,  # Reuse existing file
+                    sha256_hash=new_hash,  # Make hash unique per message (64 chars)
+                    file_size=file_size,
+                    processed=False  # Process it again for this message
+                )
+                db.add(image_record)
+                logger.info(f"Created duplicate image record (will trigger OCR and alerts)")
+            else:
+                # New unique image
+                image_record = ImageRecord(
+                    message_id=db_message_id,
+                    file_path=file_path,
+                    sha256_hash=sha256_hash,
+                    file_size=file_size,
+                    processed=False
+                )
+                db.add(image_record)
+                logger.info(f"Downloaded media: {file_path} ({file_size} bytes)")
+                
         except Exception as e:
             logger.error(f"Error downloading media: {e}")
             if file_path and os.path.exists(file_path):
