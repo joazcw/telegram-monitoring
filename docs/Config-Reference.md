@@ -393,54 +393,26 @@ secrets:
 
 ## Configuration Validation
 
-### Startup Validation Script
+### Configuration Validation
+
+The system automatically validates configuration at startup using `src/config.py`:
+
 ```python
-# scripts/validate_config.py
-import os
-import sys
-from src.config import *
+# Configuration validation is built into src/config.py
+from src.config import validate_config
 
-def validate_config():
-    """Validate all required configuration is present and valid"""
-    errors = []
-
-    # Required fields
-    if not TELEGRAM_API_ID:
-        errors.append("TELEGRAM_API_ID is required")
-
-    if not TELEGRAM_API_HASH:
-        errors.append("TELEGRAM_API_HASH is required")
-
-    if not TELEGRAM_GROUPS:
-        errors.append("TELEGRAM_GROUPS is required")
-
-    # Validate ranges
-    if not (0 <= FUZZY_THRESHOLD <= 100):
-        errors.append("FUZZY_THRESHOLD must be 0-100")
-
-    if not (0 <= OCR_CONFIDENCE_THRESHOLD <= 100):
-        errors.append("OCR_CONFIDENCE_THRESHOLD must be 0-100")
-
-    # Validate paths
-    media_parent = os.path.dirname(MEDIA_DIR)
-    if not os.access(media_parent, os.W_OK):
-        errors.append(f"MEDIA_DIR parent {media_parent} not writable")
-
-    # Validate database URL
-    if not DB_URL.startswith('postgresql'):
-        errors.append("DB_URL must be PostgreSQL connection string")
-
-    if errors:
-        print("Configuration errors:")
-        for error in errors:
-            print(f"  - {error}")
-        sys.exit(1)
-
-    print("✅ Configuration validation passed")
-
-if __name__ == "__main__":
+try:
     validate_config()
+    print("✅ Configuration is valid")
+except ValueError as e:
+    print(f"❌ Configuration error: {e}")
 ```
+
+**Validation includes:**
+- Required Telegram API credentials
+- Group and alert chat configuration
+- Brand keywords configuration
+- Database connection settings
 
 ### Runtime Health Check
 ```python
