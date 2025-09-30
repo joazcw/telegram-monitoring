@@ -59,8 +59,8 @@ print_status "Setting up database..."
 docker-compose up -d db
 sleep 10  # Wait for database to be ready
 
-print_status "Running database migrations..."
-docker-compose run --rm app python scripts/migrate.py upgrade
+print_status "Initializing database..."
+docker-compose run --rm app python -c "from src.database import init_db; init_db(); print('✅ Database initialized')"
 
 # Start all services
 print_status "Starting all services..."

@@ -139,7 +139,7 @@ Telegram Groups → Message Collector → OCR + Brand Detection → Alert Sender
 
 ```
 ├── src/                    # Main application code
-├── scripts/               # Setup scripts (auth.py)
+├── scripts/               # Setup scripts (auth.py, init_db.py)
 ├── tests/                 # Basic functionality tests
 ├── docker-compose.yml     # Container orchestration
 ├── debug_messages.py      # Group discovery tool
