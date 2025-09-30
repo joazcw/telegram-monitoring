@@ -9,7 +9,6 @@ from src.config import (
 from src.database import SessionLocal
 from src.models import TelegramMessage, ImageRecord
 import logging
-import aiofiles
 
 logger = logging.getLogger(__name__)
 
