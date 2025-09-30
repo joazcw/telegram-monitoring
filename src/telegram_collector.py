@@ -268,36 +268,10 @@ class TelegramCollector:
         return group_info
 
     def get_stats(self) -> dict:
-        """Get collector statistics"""
-        base_stats = {
+        """Get basic collector status"""
+        return {
             'configured_groups': len(self.groups),
             'authenticated': self.session_authenticated,
             'connected': (self.client.is_connected() if self.client and hasattr(self.client, 'is_connected') else False),
             'credentials_configured': self.credentials_available
         }
-
-        try:
-            db = SessionLocal()
-            message_count = db.query(TelegramMessage).count()
-            image_count = db.query(ImageRecord).count()
-            processed_messages = db.query(TelegramMessage).filter(TelegramMessage.processed == True).count()
-
-            base_stats.update({
-                'total_messages': message_count,
-                'total_images': image_count,
-                'processed_messages': processed_messages,
-                'unprocessed_messages': message_count - processed_messages,
-                'database_available': True
-            })
-            db.close()
-        except Exception as e:
-            logger.warning(f"Cannot get database stats: {e}")
-            base_stats.update({
-                'total_messages': 'N/A (DB unavailable)',
-                'total_images': 'N/A (DB unavailable)',
-                'processed_messages': 'N/A (DB unavailable)',
-                'unprocessed_messages': 'N/A (DB unavailable)',
-                'database_available': False
-            })
-
-        return base_stats

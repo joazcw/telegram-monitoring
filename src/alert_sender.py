@@ -196,17 +196,11 @@ class AlertSender:
         logger.info("Alert sender stopped")
 
     def get_stats(self) -> dict:
-        """Get alerting system statistics"""
+        """Get basic alert system status"""
         return {
             'credentials_configured': self.credentials_available,
             'chat_configured': bool(self.alert_chat_id and self.alert_chat_id != 0),
-            'rate_limit': self.rate_limit,
-            'recent_alerts_count': len(self.alert_history),
-            'connected': (self.client.is_connected() if self.client and hasattr(self.client, 'is_connected') else False),
-            'alert_history_minutes': [
-                (datetime.now() - alert_time).total_seconds() / 60
-                for alert_time in self.alert_history[-10:]  # Last 10 alerts
-            ]
+            'connected': (self.client.is_connected() if self.client and hasattr(self.client, 'is_connected') else False)
         }
 
     async def send_test_alert(self) -> bool:

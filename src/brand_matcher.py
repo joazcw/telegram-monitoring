@@ -160,21 +160,3 @@ class BrandMatcher:
             logger.error(f"Brand matcher health check failed: {e}")
             return False
 
-    def get_match_statistics(self, text: str) -> Dict:
-        """Get detailed matching statistics for debugging"""
-        matches = self.find_matches(text)
-
-        stats = {
-            'total_matches': len(matches),
-            'exact_matches': len([m for m in matches if m['match_type'] == 'exact']),
-            'fuzzy_matches': len([m for m in matches if m['match_type'] == 'fuzzy']),
-            'avg_confidence': 0,
-            'text_length': len(text),
-            'word_count': len(self._extract_words(text)),
-            'matches': matches
-        }
-
-        if matches:
-            stats['avg_confidence'] = sum(m['confidence'] for m in matches) / len(matches)
-
-        return stats
