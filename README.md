@@ -1,161 +1,148 @@
 # Fraud Monitoring System
 
-Real-time fraud monitoring system that ingests Telegram group messages using user authentication, performs OCR on images for brand mentions, and sends instant alerts. Built for rapid deployment with minimal infrastructure.
+Real-time fraud monitoring that watches Telegram groups for suspicious messages, performs OCR on images, and sends instant alerts when target brands are mentioned.
 
-## Quick Start (3-5 minutes)
+## 🚀 Quick Start (5 minutes)
 
 ### Prerequisites
 - Docker & Docker Compose
 - Telegram account
-- 5 minutes to obtain Telegram API credentials
+- 5 minutes for setup
 
-### 1. Get Telegram API Credentials
+### Step 1: Get Telegram API Credentials
 
 1. Visit https://my.telegram.org/apps
-2. Create new application, note `API ID` and `API Hash`
-3. Generate session encryption key (see below)
+2. Create new application
+3. Note your `API ID` and `API Hash`
 
-### 2. Setup Environment
+### Step 2: Clone and Configure
 
 ```bash
 git clone <your-repo>
 cd t
 cp .env.example .env
-# Edit .env with your API credentials first (see below)
-# Don't worry about group IDs yet - we'll discover them in Step 3
 ```
 
-### 3. Authenticate and Configure Groups
+Edit `.env` and add your credentials:
+```bash
+TELEGRAM_API_ID=12345                    # From step 1
+TELEGRAM_API_HASH=your_api_hash_here     # From step 1
+```
 
-**⚠️ Critical**: You MUST authenticate first and use real groups you can access!
+### Step 3: Authenticate with Telegram
 
 ```bash
-# Step 1: Authenticate with Telegram
 python scripts/auth.py
-# Enter your phone number and verification code when prompted
+```
+Enter your phone number and verification code when prompted.
 
-# Step 2: Discover your accessible groups
+### Step 4: Find Your Groups
+
+```bash
 python debug_messages.py
-# This will show a formatted table with:
-# - Group IDs (copy these to .env)
-# - Group names and types
-# - Example .env configuration
-
-# Step 3: Update .env with the IDs from above
-# Choose groups you want to MONITOR for suspicious content:
-TELEGRAM_GROUPS=-1001234567890,-1002345678901
-
-# Choose where you want to RECEIVE alerts (can be same or different):
-TELEGRAM_ALERT_CHAT_ID=-1003456789012
 ```
 
-### 4. Launch System
+This shows all groups you can access with their IDs. Example output:
+```
+📋 Copy these IDs to your .env file:
+------------------------------------------------------------
+             ID | TYPE     | TITLE                          | USERNAME
+------------------------------------------------------------
+ -1001234567890 | Channel  | Portal da Fraude               | No username
+ -1000987654321 | Channel  | Crypto Trading Tips            | @crypto_tips
+    -4010293847 | Group    | My Private Alerts              | No username
+```
 
+### Step 5: Update .env with Real Group IDs
+
+Edit `.env` with IDs from step 4:
 ```bash
-docker-compose up -d
-docker-compose logs -f app  # Watch for "Connected to Telegram" message
-```
-
-### 5. Quick Smoke Test
-
-1. **Text Test**: Send message with "CloudWalk" to monitored group
-   - Should receive alert within 5-10 seconds
-
-2. **Image Test**: Send clear image with "Visa" or "Mastercard" text
-   - Use high-contrast, readable text (black on white background works best)
-   - Should receive alert within 30 seconds
-
-3. **Verify in logs**:
-   ```bash
-   docker-compose logs -f app
-   # Look for: "Brand hit in text: CloudWalk (confidence: 100%)"
-   # Or: "Alert sent for brand: Visa"
-   ```
-
-## Understanding Groups vs Alerts
-
-**Key Concept**: You need to understand the difference between monitoring and alerting:
-
-- **`TELEGRAM_GROUPS`**: Groups you want to **watch for suspicious messages** (input)
-- **`TELEGRAM_ALERT_CHAT_ID`**: Where you want to **receive notifications** (output)
-
-**Examples:**
-```
-✅ Good Setup (Different IDs):
-TELEGRAM_GROUPS=-1001234567890        # Monitor public crypto group
-TELEGRAM_ALERT_CHAT_ID=-1003456789012 # Send alerts to private team chat
-
-❌ Problematic Setup (Same ID):
-TELEGRAM_GROUPS=-1001234567890        # Monitor group
-TELEGRAM_ALERT_CHAT_ID=-1001234567890 # Alert same group (may cause issues)
-```
-
-## Environment Configuration
-
-Copy to `.env` and edit marked fields:
-
-```bash
-# EDIT ME: Get from https://my.telegram.org/apps
-TELEGRAM_API_ID=12345
-TELEGRAM_API_HASH=your_api_hash_here
-
-TELEGRAM_SESSION_PATH=./data/telethon.session
-
-# EDIT ME: Group/channel IDs to monitor (get from Step 3 above)
-# Use NUMERIC IDs (recommended) or usernames - comma-separated for multiple
+# Groups to MONITOR for suspicious content:
 TELEGRAM_GROUPS=-1001234567890
-# Alternative username format: TELEGRAM_GROUPS=@your_group_name
 
-# EDIT ME: Chat ID where alerts are sent (get from Step 3 above)
-# IMPORTANT: Use different ID from monitoring groups for best results
-TELEGRAM_ALERT_CHAT_ID=-1003456789012
-
-# EDIT ME: Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
-SESSION_ENCRYPTION_KEY=your_encryption_key_here
-
-DB_URL=postgresql+psycopg://fraud_user:fraud_pass@db:5432/fraud_db
-MEDIA_DIR=./data/media
-OCR_LANG=eng
-# EDIT ME: Brands/keywords to detect (comma-separated)
-BRAND_KEYWORDS=CloudWalk,InfinitePay,Visa,Mastercard
-FUZZY_THRESHOLD=85
-LOG_LEVEL=INFO
+# Where to SEND alerts (use different ID for best results):
+TELEGRAM_ALERT_CHAT_ID=-4010293847
 ```
 
-## Complete Setup Walkthrough
-
-**If you followed the steps above, skip this section.** This is for reference:
+### Step 6: Launch System
 
 ```bash
-# 1. Generate encryption key and add to .env
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-
-# 2. Authenticate with Telegram
-python scripts/auth.py
-
-# 3. Find your groups (use the script from Step 2 in the main setup)
-# Copy the IDs and update your .env file
-
-# 4. Update .env with real IDs, then start
 docker-compose up -d
+docker-compose logs -f app  # Watch startup logs
 ```
 
-## Troubleshooting
+Look for: `✅ Group accessible: -1001234567890` and `Listening for messages in 1 groups...`
 
-- **"Session file not found"**: Run `python scripts/auth.py` to authenticate
-- **"UsernameInvalidError" or "Invalid Peer"**: You're using example/invalid group IDs. Run `python debug_messages.py` to get real group IDs you can access
-- **"No accessible groups"**: Run `python debug_messages.py` to discover groups you can monitor
-- **"No brand hits detected"**: Check image has clear, readable text with target keywords
-- **"Database is locked"**: Fixed in latest version - uses shared session
-- **"Cannot find entity"**: Use group usernames (@group) instead of numeric IDs
-- **"Database connection failed"**: Ensure PostgreSQL container is healthy
+### Step 7: Test It Works
 
-## Architecture
+1. **Text Test**: Send "CloudWalk" to monitored group → Should get alert in 5-10 seconds
+2. **Image Test**: Send clear image with "Visa" text → Should get alert in 30 seconds
+
+## 📋 What Groups to Use
+
+**For Monitoring (`TELEGRAM_GROUPS`)**:
+- Public crypto/trading channels
+- Suspicious activity groups
+- Any group where fraud might be discussed
+
+**For Alerts (`TELEGRAM_ALERT_CHAT_ID`)**:
+- Your private group/chat
+- Team notification channel
+- Different from monitoring groups (recommended)
+
+## 🔧 Configuration
+
+The system detects these brands by default:
+- CloudWalk
+- InfinitePay
+- Visa
+- Mastercard
+
+To add more brands, edit `.env`:
+```bash
+BRAND_KEYWORDS=CloudWalk,InfinitePay,Visa,Mastercard,YourBrand
+```
+
+## 🐛 Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| "Session file not found" | Run `python scripts/auth.py` |
+| "UsernameInvalidError" | Run `python debug_messages.py` to get real group IDs |
+| "No accessible groups" | Join some Telegram groups first |
+| "No brand hits detected" | Use clear, readable text in images |
+| "Database connection failed" | Check if Docker containers are running |
+
+## 🏗️ Architecture
 
 ```
-Telegram Groups → User Session → Message Collector → OCR Engine → Brand Matcher → Alert Sender
-                       ↓               ↓              ↓            ↓             ↓
-                  Authentication   PostgreSQL    Local Disk   Fuzzy Search   User Session
+Telegram Groups → Message Collector → OCR + Brand Detection → Alert Sender
+      ↓               ↓                        ↓                    ↓
+  You monitor      PostgreSQL            Text Analysis        You get alerts
 ```
 
-For detailed implementation, see `docs/Implementation-Guide.md`.
+**How it works:**
+1. Monitors your specified Telegram groups
+2. Extracts text from images using OCR
+3. Searches for brand mentions using fuzzy matching
+4. Sends formatted alerts to your notification chat
+
+**Features:**
+- Real-time monitoring
+- Image text extraction (OCR)
+- Smart text matching (handles typos)
+- Duplicate detection
+- Rate limiting
+- Docker containerized
+
+## 📁 Project Structure
+
+```
+├── src/                    # Main application code
+├── scripts/               # Setup scripts (auth.py)
+├── docker-compose.yml     # Container orchestration
+├── debug_messages.py      # Group discovery tool
+└── .env                  # Your configuration
+```
+
+That's it! The system will now monitor your groups and send alerts when target brands are mentioned.

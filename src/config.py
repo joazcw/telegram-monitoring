@@ -56,7 +56,6 @@ LOG_MAX_SIZE = int(os.getenv('LOG_MAX_SIZE', '104857600'))  # 100MB
 LOG_BACKUP_COUNT = int(os.getenv('LOG_BACKUP_COUNT', '5'))
 
 # Security
-SESSION_ENCRYPTION_KEY = os.getenv('SESSION_ENCRYPTION_KEY', '')
 ALERT_RATE_LIMIT = int(os.getenv('ALERT_RATE_LIMIT', '10'))
 API_TIMEOUT = int(os.getenv('API_TIMEOUT', '30'))
 
@@ -76,9 +75,6 @@ def validate_config():
 
     if not TELEGRAM_ALERT_CHAT_ID or TELEGRAM_ALERT_CHAT_ID == 0:
         errors.append("TELEGRAM_ALERT_CHAT_ID is required")
-
-    if not SESSION_ENCRYPTION_KEY:
-        errors.append("SESSION_ENCRYPTION_KEY is required")
 
     if errors:
         raise ValueError(f"Configuration errors: {', '.join(errors)}")
