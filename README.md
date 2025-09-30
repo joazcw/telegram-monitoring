@@ -140,9 +140,23 @@ Telegram Groups → Message Collector → OCR + Brand Detection → Alert Sender
 ```
 ├── src/                    # Main application code
 ├── scripts/               # Setup scripts (auth.py)
+├── tests/                 # Basic functionality tests
 ├── docker-compose.yml     # Container orchestration
 ├── debug_messages.py      # Group discovery tool
 └── .env                  # Your configuration
+```
+
+## 🧪 Testing
+
+Run basic tests to verify the system works:
+
+```bash
+python run_tests.py
+```
+
+Or run tests directly with pytest:
+```bash
+pytest tests/ -v
 ```
 
 That's it! The system will now monitor your groups and send alerts when target brands are mentioned.
