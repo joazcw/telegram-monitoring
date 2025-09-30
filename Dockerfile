@@ -40,9 +40,5 @@ RUN chmod 755 /app/data
 RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD python -c "from src.database import check_db_connection; exit(0 if check_db_connection() else 1)"
-
 # Default command
 CMD ["python", "-m", "src.main"]
